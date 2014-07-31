@@ -1,0 +1,3 @@
+[submodule "3rd/socket-server"]
+	path = 3rd/socket-server
+	url = git@github.com:hanxi/socket-server.git
