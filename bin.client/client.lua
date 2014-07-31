@@ -1,7 +1,9 @@
-package.cpath = "luaclib/clientsocket.so"
+package.cpath = "luaclib/?.so;"
+package.path = "lualib/?.lua;"
 
 local socket = require "clientsocket"
 local bit32 = require "bit32"
+local md5 = require "md5"
 
 local fd = assert(socket.connect("127.0.0.1", 8888))
 
@@ -46,13 +48,40 @@ end
 local session = 0
 
 local function send_request(v)
-	session = session + 1
+	--session = session + 1
 	local str = string.format("%d+%s",session, v)
-	send_package(fd, str)
-	print("Request:", session,str)
+
+    local protId = 101
+    local mid = -1
+	local sendstr = string.char(bit32.extract(protId,8,8)) ..
+		string.char(bit32.extract(protId,0,8))..
+		string.char(bit32.extract(mid,8,8))..
+		string.char(bit32.extract(mid,0,8))..
+		str
+    print("size=",#sendstr)
+	send_package(fd, sendstr)
+	print("Request:", sendstr)
+end
+
+local function handshake()
+    local protId = 100
+    --local str = md5.sumhexa("client_md5")
+    --print(string.format("str=%s",str))
+    --local str = md5.sumhexa("server_md5")
+    --print(string.format("str=%s",str))
+    local str = md5.sumhexa("debug_md5")
+    --print(string.format("str=%s",str))
+	local sendstr = string.char(bit32.extract(protId,8,8)) ..
+		string.char(bit32.extract(protId,0,8))..
+		str
+    print(string.format("size=%s,str=%s",#sendstr,str))
+	send_package(fd, sendstr)
+	print("Request:", sendstr)
 end
 
 local last = ""
+
+handshake()
 
 while true do
 	while true do
