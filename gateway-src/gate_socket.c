@@ -1,16 +1,14 @@
 #include "gate_socket.h"
 #include "socket_server.h"
 #include "gate_mq.h"
+#include "common.h"
 
-#include <lua.h>
-#include <lauxlib.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdio.h>
 
-#define MALLOC malloc
-#define FREE free
 #define GATE_SOURCE 200
 
 static struct socket_server * SOCKET_SERVER = NULL;
@@ -32,27 +30,14 @@ gate_socket_free() {
 }
 
 static void
-forward_message(int type, bool padding, struct socket_message * result) {
+forward_message(int type, struct socket_message * result) {
     struct gate_message *sm;
     int sz = sizeof(*sm);
-    if (padding) {
-        if (result->data) {
-            sz += strlen(result->data) + 1;
-        } else {
-            result->data = "";
-            sz += 1;
-        }
-    }
     sm = (struct gate_message *)MALLOC(sz);
     sm->type = type;
     sm->id = result->id;
     sm->ud = result->ud;
-    if (padding) {
-        sm->buffer = NULL;
-        strcpy((char*)(sm+1), result->data);
-    } else {
-        sm->buffer = result->data;
-    }
+    sm->buffer = result->data;
 
     gate_mq_push(sm);
 }
@@ -68,19 +53,19 @@ gate_socket_poll() {
     case SOCKET_EXIT:
         return 0;
     case SOCKET_DATA:
-        forward_message(GATE_SOCKET_TYPE_DATA, false, &result);
+        forward_message(GATE_SOCKET_TYPE_DATA, &result);
         break;
     case SOCKET_CLOSE:
-        forward_message(GATE_SOCKET_TYPE_CLOSE, false, &result);
+        forward_message(GATE_SOCKET_TYPE_CLOSE, &result);
         break;
     case SOCKET_OPEN:
-        forward_message(GATE_SOCKET_TYPE_CONNECT, true, &result);
+        forward_message(GATE_SOCKET_TYPE_CONNECT, &result);
         break;
     case SOCKET_ERROR:
-        forward_message(GATE_SOCKET_TYPE_ERROR, false, &result);
+        forward_message(GATE_SOCKET_TYPE_ERROR, &result);
         break;
     case SOCKET_ACCEPT:
-        forward_message(GATE_SOCKET_TYPE_ACCEPT, true, &result);
+        forward_message(GATE_SOCKET_TYPE_ACCEPT, &result);
         break;
     default:
         fprintf(stderr, "Unknown socket message type %d.\n",type);

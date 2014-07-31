@@ -1,4 +1,5 @@
 #include "gate_mq.h"
+#include "common.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,8 +7,6 @@
 #include <assert.h>
 #include <stdbool.h>
 
-#define MALLOC malloc
-#define FREE free
 #define DEFAULT_QUEUE_SIZE 64
 
 struct message_queue {
@@ -25,7 +24,8 @@ static struct message_queue *Q = NULL;
 #define UNLOCK(q) __sync_lock_release(&(q)->lock);
 
 int
-gate_mq_length(struct message_queue *q) {
+gate_mq_length() {
+    struct message_queue *q = Q;
 	int head, tail,cap;
 
 	LOCK(q)
@@ -104,4 +104,17 @@ gate_mq_init() {
 	q->next = NULL;
 	Q=q;
 }
+
+void
+gate_mq_release() {
+	struct message_queue *q = Q;
+	struct gate_message msg;
+	while(!gate_mq_pop(&msg)) {
+        FREE(msg.buffer);
+	}
+	assert(q->next == NULL);
+	//FREE(q->queue);
+	FREE(q);
+}
+
 
