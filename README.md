@@ -1,7 +1,7 @@
 
 ## simple network game server
 
-* ### gateway
+> ### gateway
 
 ## test in linux
 
@@ -19,11 +19,11 @@
 
 ## TODO :
 
-* ### server : logic server
+> ### server : logic server
 
-* ### login server : by http
+> ### login server : by http
 
-* ### net protocal
+> ### net protocal
 
 ## others :
 
