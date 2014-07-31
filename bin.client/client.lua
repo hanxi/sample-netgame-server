@@ -60,23 +60,21 @@ local function send_request(v)
 		str
     print("size=",#sendstr)
 	send_package(fd, sendstr)
-	print("Request:", sendstr)
 end
 
 local function handshake()
     local protId = 100
-    --local str = md5.sumhexa("client_md5")
+    local str = md5.sumhexa("client_md5")
     --print(string.format("str=%s",str))
     --local str = md5.sumhexa("server_md5")
     --print(string.format("str=%s",str))
-    local str = md5.sumhexa("debug_md5")
+    --local str = md5.sumhexa("debug_md5")
     --print(string.format("str=%s",str))
 	local sendstr = string.char(bit32.extract(protId,8,8)) ..
 		string.char(bit32.extract(protId,0,8))..
 		str
     print(string.format("size=%s,str=%s",#sendstr,str))
 	send_package(fd, sendstr)
-	print("Request:", sendstr)
 end
 
 local last = ""
@@ -90,18 +88,24 @@ while true do
 		if not v then
 			break
 		end
-		local session,t,str = string.match(v, "(%d+)(.)(.*)")
-		assert(t == '-' or t == '+')
-		session = tonumber(session)
-		local result = str
-		print("Response:",session, result)
+        local sz = v:byte(1) * 256 + v:byte(2)
+        local protId = v:byte(3) * 256 + v:byte(4)
+		local result = string.sub(v,5,#v)
+		print("Response:", sz,protId)
 	end
-	local cmd = socket.readstdin()
+	--local cmd = socket.readstdin()
+    local cmds = {
+        "hello111111",
+        "hello2222222222222222",
+        "hello3333333333333333333333333333333",
+        "hello4444444444444444444444444444444444444444444444",
+        "hello555555555555555555555555555555555555555555555555555555555555555",
+    }
+    local cmd = cmds[math.random(1,5)]
 	if cmd then
 		local args = {}
 		string.gsub(cmd, '[^ ]+', function(v) table.insert(args, v) end )
 		send_request(table.concat(args))
-	else
-		socket.usleep(100)
+		socket.usleep(10000)
 	end
 end
