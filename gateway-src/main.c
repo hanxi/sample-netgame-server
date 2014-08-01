@@ -16,7 +16,7 @@
 
 static struct lua_State *L = NULL;
 
-static void *
+static void
 gate_loop() {
     for (;;) {
         int r = gate_socket_poll();

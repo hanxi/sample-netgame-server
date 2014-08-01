@@ -11,8 +11,6 @@ struct gate_message {
 	char * buffer;
 };
 
-struct message_queue;
-
 // 0 for success
 int gate_mq_pop(struct gate_message *message);
 void gate_mq_push(struct gate_message *message);

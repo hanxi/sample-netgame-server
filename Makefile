@@ -17,7 +17,7 @@ all : \
 	$(BIN_SERVER_PATH) \
 	$(BIN_GATEWAY_PATH)/gateway \
 	$(BIN_SERVER_PATH)/server \
-	$(foreach v, $(LUA_CLIB), $(LUA_CLIB_PATH)/$(v).so) 
+	$(foreach v, $(LUA_CLIB), $(LUA_CLIB_PATH)/$(v).so)
 
 $(LUA_STATICLIB) :
 	cd 3rd/lua && $(MAKE) CC=$(CC) linux
@@ -36,16 +36,16 @@ $(LUA_CLIB_PATH)/clientsocket.so: lualib-src/lua-clientsocket.c
 	$(CC) $(CFLAGS) $(SHARED) -o $@ $^ $(INCLS) -I$(LUA_INC) -lpthread
 
 $(LUA_CLIB_PATH)/md5.so : 3rd/lua-md5/md5.c 3rd/lua-md5/md5lib.c 3rd/lua-md5/compat-5.2.c | $(LUA_CLIB_PATH)
-	$(CC) $(CFLAGS) $(SHARED) -I3rd/lua-md5 $^ -o $@ 
+	$(CC) $(CFLAGS) $(SHARED) -I3rd/lua-md5 $^ -o $@
 
 ### gateway
 GATEWAY_SRC = gate_mq.c gate_socket.c gate_main.c main.c
 $(BIN_GATEWAY_PATH)/gateway : $(foreach v, $(GATEWAY_SRC), gateway-src/$(v)) 3rd/socket-server/socket_server.c $(LUA_LIB)
-	$(CC) $(CFLAGS) -o $@ $^ $(INCLS) -I$(LUA_INC) -Wl,-E -lpthread -lm -ldl -lrt 
+	$(CC) $(CFLAGS) -o $@ $^ $(INCLS) -I$(LUA_INC) -Wl,-E -lm -ldl -lrt
 
 ### server
-$(BIN_SERVER_PATH)/server : server-src/main.c 3rd/socket-server/socket_server.c
-	$(CC) $(CFLAGS) -o $@ $^ $(INCLS)
+$(BIN_SERVER_PATH)/server : server-src/main.c common-src/socket_mq.c common-src/client_socket.c $(LUA_LIB)
+	$(CC) $(CFLAGS) -o $@ $^ $(INCLS) -I$(LUA_INC) -Wl,-E -lm -ldl -lrt
 
 clean:
 	rm -f $(BIN_GATEWAY_PATH)/gateway $(BIN_SERVER_PATH)/server $(LUA_CLIB_PATH)/*.so
