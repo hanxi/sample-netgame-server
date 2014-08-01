@@ -298,7 +298,7 @@ start_listen(struct gate *g, const char * host, int port) {
         return 1;
     }
     gate_socket_start(g->listen_id);
-    printf("listening %d\n",g->listen_id);
+    printf("listening listen_id=%d\n",g->listen_id);
     return 0;
 }
 

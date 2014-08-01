@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <assert.h>
+#include <time.h>
 
 #define MAX_CONNECTION 10240
 
@@ -27,13 +28,13 @@ gate_loop() {
             continue;
         }
         gate_dispatch();
+        usleep(2000); // sleep 2ms
     }
-    return NULL;
 }
 
 static const char * lua_config = "\
     local root=...\
-    print('root:',root)\
+    print('root path:',root)\
     package.path=root..'/scripts/?.lua;'\
     require('main')\
 ";
@@ -77,19 +78,19 @@ main(int argc, char * argv[]) {
     gate_mq_init();
     gate_socket_init();
 
-
-    gate_init(MAX_CONNECTION, "127.0.0.1",8888,L);
-
-    printf("0\n");
+    lua_getglobal(L,"CONFIG_IP");
+    const char * IP = lua_tostring(L,-1);
+    lua_settop(L,0);
+    lua_getglobal(L,"CONFIG_PORT");
+    int PORT = lua_tointeger(L,-1);
+    lua_settop(L,0);
+    printf("[host %s:%d ] staring gateway ...\n",IP,PORT);
+    gate_init(MAX_CONNECTION, IP,PORT,L);
     gate_loop();
-
-    printf("1\n");
     gate_release();
-    printf("2\n");
+
     gate_socket_free();
-    printf("3\n");
     gate_mq_release();
-    printf("4\n");
 
     return 0;
 }

@@ -10,3 +10,7 @@ function msg_dispatch(id,buffer)
     print("msg_dispatch:",id,buffer)
 end
 
+function loop()
+    print("lua loop")
+end
+

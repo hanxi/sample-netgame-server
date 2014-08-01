@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <assert.h>
+#include <time.h>
 
 static struct lua_State *L = NULL;
 static struct socket * SOCKET = NULL;
@@ -43,6 +44,7 @@ main_loop(struct socket * s) {
         socket_msgdispatch(s,lua_dispatch);
         socket_send_remainbuffer(s);
         call_lualoop();
+        usleep(2000); // sleep 2ms
     }
 }
 

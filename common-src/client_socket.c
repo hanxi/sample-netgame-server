@@ -119,6 +119,9 @@ socket_connect(const char * addr, int port, struct socket ** s) {
 
 int
 socket_send_remainbuffer(struct socket *s) {
+    if (s==NULL) {
+        return -1;
+    }
     while (s->head) {
         struct write_buffer * tmp = s->head;
         for (;;) {
