@@ -34,6 +34,7 @@ struct socket {
     struct write_buffer * tail;
     struct databuffer read_buffer;
     struct messagepool mp;
+    struct message_queue * q;
 };
 
 static void
@@ -48,6 +49,15 @@ force_close(struct socket *s) {
     s->head = s->tail = NULL;
     messagepool_free(&s->mp);
     close(s->fd);
+    if (s->q) {
+        socket_mq_delete(s->q);
+    }
+    s->q = NULL;
+}
+
+int 
+socket_get_fd(struct socket * s) {
+    return s->fd;
 }
 
 struct socket *
@@ -64,7 +74,6 @@ socket_new() {
 void 
 socket_delete(struct socket * s) {
     force_close(s);
-    socket_mq_release();
     FREE(s);
 }
 
@@ -116,17 +125,12 @@ socket_connect(const char * addr, int port, struct socket * s) {
 	int flag = fcntl(fd, F_GETFL, 0);
 	fcntl(fd, F_SETFL, flag | O_NONBLOCK);
 
-    if (s!=NULL) {
-        force_close(s);
-        socket_mq_release();
-    }
-
     s->fd = fd;
     s->size = MIN_READ_BUFFER;
     s->wb_size = 0;
     s->head = NULL;
     s->tail = NULL;
-    socket_mq_init();
+    s->q = socket_mq_new();
     printf("connect:OK\n");
 
     return 0;
@@ -190,7 +194,7 @@ append_sendbuffer(struct socket *s, const void * buffer, int sz, int n) {
 int64_t
 socket_send(struct socket *s, const void * buffer, int sz) {
     if (s==NULL || s->fd==-1) {
-        fprintf(stderr, "socket_send.\n");
+        fprintf(stderr, "erro . socket_send. %d\n",(int)s);
         return -1;
     }
     if (s->head == NULL) {
@@ -266,16 +270,16 @@ write_block(char * buffer, int r, int pos) {
 
 void
 socket_msgdispatch(struct socket * s, dispatch_cb cb) {
-    if (s==NULL || s->fd==-1) {
+    if (s==NULL || s->fd==-1 || s->q==NULL) {
         return;
     }
     struct socket_message sm;
     int ret = recv_msg(s, &sm);
     if (ret==0) {
-        socket_mq_push(&sm);
+        socket_mq_push(s->q,&sm);
     }
     struct socket_message msg;
-    while (!socket_mq_pop(&msg)) {
+    while (!socket_mq_pop(s->q,&msg)) {
         databuffer_push(&s->read_buffer,&s->mp, msg.data, msg.sz);
         int size = databuffer_readheader(&s->read_buffer, &s->mp, 2);
         if (size > 0) {
@@ -286,7 +290,7 @@ socket_msgdispatch(struct socket * s, dispatch_cb cb) {
                 char * temp = MALLOC(size+2);
                 databuffer_read(&s->read_buffer,&s->mp,temp+2, size);
                 write_block(temp,size,0);
-                cb(temp,size);
+                cb(s->fd,temp,size);
                 FREE(temp);
             }
             databuffer_reset(&s->read_buffer);

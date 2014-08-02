@@ -1,5 +1,4 @@
 #include "client_socket.h"
-#include "socket_mq.h"
 #include "common.h"
 
 #include <lua.h>
@@ -14,13 +13,13 @@
 #include <time.h>
 
 static struct lua_State *L = NULL;
-static struct socket * SOCKET = NULL;
 
 static int
-lua_dispatch(const char * buffer, int size) {
+lua_dispatch(int fd, const char * buffer, int size) {
     lua_getglobal(L,"msg_dispatch");
+    lua_pushnumber(L,fd);
     lua_pushlstring(L,buffer,size);
-    int err = lua_pcall(L, 1, 0, 0);
+    int err = lua_pcall(L, 2, 0, 0);
     if (err) {
         fprintf(stderr,"%s\n",lua_tostring(L,-1));
         return 1;
@@ -40,10 +39,8 @@ call_lualoop() {
 }
 
 static void
-main_loop(struct socket * s) {
+main_loop() {
     for (;;) {
-        socket_msgdispatch(s,lua_dispatch);
-        socket_send_remainbuffer(s);
         call_lualoop();
         usleep(2000); // sleep 2ms
     }
@@ -56,38 +53,54 @@ static const char * lua_config = "\
     require('main')\
 ";
 
-static int 
-lconnect(lua_State * L) {
-	const char * addr = luaL_checkstring(L, 1);
-	int port = luaL_checkinteger(L, 2);
-    int ret = socket_connect(addr, port,SOCKET);
-	if (ret) {
-		return luaL_error(L, "Connect %s %d failed", addr, port);
-	}
-	return 1;
+static int
+ldisconnect(lua_State * L) {
+    struct socket * s = lua_touserdata(L,1);
+    socket_delete(s);
+    return 0;
 }
 
 static int
 lsend(lua_State * L) {
+    struct socket * s = lua_touserdata(L,1);
 	size_t sz = 0;
-	const char * msg = luaL_checklstring(L, 1, &sz);
-    printf("msg:%s\n",msg);
-    int ret = socket_send(SOCKET,msg, sz);
-    printf("msg:%s\n",msg);
+	const char * msg = luaL_checklstring(L, 2, &sz);
+    int ret = socket_send(s,msg, sz);
     lua_settop(L,0);
     lua_pushnumber(L,ret);
 	return 1;
 }
 
-int 
-lsocket(lua_State *L) {
-	luaL_Reg l[] = {
-		{"connect", lconnect},
-		{"send", lsend},
-		{NULL,NULL},
-	};
-	luaL_newlib(L,l);
+static int
+lget_fd(lua_State * L) {
+    struct socket * s = lua_touserdata(L,1);
+    lua_settop(L,0);
+    int fd = socket_get_fd(s);
+    lua_pushnumber(L,fd);
+    return 1;
+}
+
+static int 
+lconnect(lua_State * L) {
+	const char * addr = luaL_checkstring(L, 1);
+	int port = luaL_checkinteger(L, 2);
+    struct socket * s = socket_new();
+    int ret = socket_connect(addr, port,s);
+	if (ret) {
+		return luaL_error(L, "Connect %s %d failed", addr, port);
+	}
+    int fd = socket_get_fd(s);
+    printf("lconnect:%d,fd=%d\n",(int)lconnect,fd);
+    lua_pushlightuserdata(L,s);
 	return 1;
+}
+
+static int
+lsocketloop(lua_State * L) {
+    struct socket * s = lua_touserdata(L,1);
+    socket_msgdispatch(s,lua_dispatch);
+    socket_send_remainbuffer(s);
+    return 1;
 }
 
 static void
@@ -101,13 +114,27 @@ checkluaversion(lua_State *L) {
 	}
 }
 
+int
+lua_open_socket(lua_State *L) {
+	luaL_Reg l[] = {
+        {"connect",lconnect},
+        {"disconnect",ldisconnect},
+        {"send",lsend},
+        {"get_fd",lget_fd},
+        {"loop",lsocketloop},
+		{NULL,NULL},
+    };
+	luaL_newlib(L,l);
+    return 1;
+}
+
 static void
 lua_init(const char * root) {
     L = luaL_newstate();
 	checkluaversion(L);
     luaL_openlibs(L);   // link lua lib
 
-	luaL_requiref(L, "socket", lsocket, 0);
+	luaL_requiref(L, "socket.c", lua_open_socket, 0);
 
     int err = luaL_loadstring(L, lua_config);
     assert(err == LUA_OK);
@@ -138,15 +165,9 @@ main(int argc, char * argv[]) {
     memset(root,0,i+1);
     memcpy(root,argv[0],i);
 
-    socket_mq_init();
-    SOCKET = socket_new();
-
     lua_init(root);
 
-    main_loop(SOCKET);
-
-    socket_delete(SOCKET);
-    socket_mq_release();
+    main_loop();
 
     return 0;
 }

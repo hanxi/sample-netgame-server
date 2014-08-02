@@ -6,14 +6,16 @@ struct socket_message {
     char * data;
 };
 
+struct message_queue;
+
 // 0 for success
-int socket_mq_pop(struct socket_message *message);
-void socket_mq_push(struct socket_message *message);
+int socket_mq_pop(struct message_queue *q, struct socket_message *message);
+void socket_mq_push(struct message_queue *q, struct socket_message *message);
 
 // return the length of message queue, for debug
-int socket_mq_length();
+int socket_mq_length(struct message_queue *q);
 
-void socket_mq_init();
-void socket_mq_release();
+struct message_queue * socket_mq_new();
+void socket_mq_delete(struct message_queue *q);
 
 #endif

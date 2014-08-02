@@ -7,7 +7,8 @@ HANDSHAKE_DEBUG_MD5  = "8d5984dfa10f855f23795857366783fc"
 CONFIG_IP = "127.0.0.1"
 CONFIG_PORT = 8888
 
-socket.connect(CONFIG_IP,CONFIG_PORT)
+local sock = socket.connect(CONFIG_IP,CONFIG_PORT)
+print("sock:fd",sock:get_fd())
 
 local function send_package(pack)
 	local size = #pack
@@ -15,7 +16,7 @@ local function send_package(pack)
 		string.char(bit32.extract(size,0,8))..
 		pack
 
-	socket.send(package)
+	print(sock:send(package))
 end
 
 local function handshake()
@@ -30,11 +31,14 @@ local function handshake()
 end
 handshake()
 
-function msg_dispatch(id,buffer)
-    print("msg_dispatch:",id,buffer)
+function msg_dispatch(fd,buffer)
+    print("msg_dispatch:",fd,buffer)
+    local sock = socket.get_sock(fd)
+    print(sock)
 end
 
 function loop()
 --    print("lua loop")
+    socket.loop()
 end
 

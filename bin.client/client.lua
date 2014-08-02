@@ -106,6 +106,6 @@ while true do
 		local args = {}
 		string.gsub(cmd, '[^ ]+', function(v) table.insert(args, v) end )
 		send_request(table.concat(args))
-		socket.usleep(10000)
+		socket.usleep(100000)
 	end
 end

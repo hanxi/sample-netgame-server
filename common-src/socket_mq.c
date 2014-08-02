@@ -18,14 +18,11 @@ struct message_queue {
 	struct message_queue *next;
 };
 
-static struct message_queue *Q = NULL;
-
 #define LOCK(q) while (__sync_lock_test_and_set(&(q)->lock,1)) {}
 #define UNLOCK(q) __sync_lock_release(&(q)->lock);
 
 int
-socket_mq_length() {
-    struct message_queue *q = Q;
+socket_mq_length(struct message_queue *q) {
 	int head, tail,cap;
 
 	LOCK(q)
@@ -41,8 +38,7 @@ socket_mq_length() {
 }
 
 int
-socket_mq_pop(struct socket_message *message) {
-    struct message_queue *q = Q;
+socket_mq_pop(struct message_queue *q, struct socket_message *message) {
 	int ret = 1;
 	LOCK(q)
 
@@ -75,8 +71,7 @@ expand_queue(struct message_queue *q) {
 }
 
 void 
-socket_mq_push(struct socket_message *message) {
-    struct message_queue *q = Q;
+socket_mq_push(struct message_queue *q, struct socket_message *message) {
 	assert(message);
 	LOCK(q)
 
@@ -92,8 +87,8 @@ socket_mq_push(struct socket_message *message) {
 	UNLOCK(q)
 }
 
-void 
-socket_mq_init() {
+struct message_queue *
+socket_mq_new() {
 	struct message_queue *q = MALLOC(sizeof(*q));
 	q->cap = DEFAULT_QUEUE_SIZE;
 	q->head = 0;
@@ -102,14 +97,13 @@ socket_mq_init() {
 	// When the queue is create (always between service create and service init) ,
 	q->queue = MALLOC(sizeof(struct socket_message) * q->cap);
 	q->next = NULL;
-	Q=q;
+    return q;
 }
 
 void
-socket_mq_release() {
-	struct message_queue *q = Q;
+socket_mq_delete(struct message_queue *q) {
 	struct socket_message msg;
-	while(!socket_mq_pop(&msg)) {
+	while(!socket_mq_pop(q,&msg)) {
         FREE(msg.data);
 	}
 	assert(q->next == NULL);
