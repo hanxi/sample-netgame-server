@@ -36,8 +36,6 @@ struct socket {
     struct messagepool mp;
 };
 
-struct socket * SOCKET = NULL;
-
 static void
 force_close(struct socket *s) {
     struct write_buffer *wb = s->head;
@@ -52,8 +50,26 @@ force_close(struct socket *s) {
     close(s->fd);
 }
 
+struct socket *
+socket_new() {
+    struct socket * s = (struct socket *)MALLOC(sizeof(struct socket));
+    s->fd = -1;
+    s->size = MIN_READ_BUFFER;
+    s->wb_size = 0;
+    s->head = NULL;
+    s->tail = NULL;
+    return s;
+}
+
+void 
+socket_delete(struct socket * s) {
+    force_close(s);
+    socket_mq_release();
+    FREE(s);
+}
+
 int
-socket_connect(const char * addr, int port, struct socket ** s) {
+socket_connect(const char * addr, int port, struct socket * s) {
 	struct addrinfo hints;
     struct addrinfo *servinfo;
 
@@ -100,26 +116,25 @@ socket_connect(const char * addr, int port, struct socket ** s) {
 	int flag = fcntl(fd, F_GETFL, 0);
 	fcntl(fd, F_SETFL, flag | O_NONBLOCK);
 
-    if (*s!=NULL) {
-        force_close(*s);
-        FREE(*s);
+    if (s!=NULL) {
+        force_close(s);
         socket_mq_release();
     }
 
-    *s = (struct socket *)MALLOC(sizeof(struct socket));
-    (*s)->fd = fd;
-    (*s)->size = MIN_READ_BUFFER;
-    (*s)->wb_size = 0;
-    (*s)->head = NULL;
-    (*s)->tail = NULL;
+    s->fd = fd;
+    s->size = MIN_READ_BUFFER;
+    s->wb_size = 0;
+    s->head = NULL;
+    s->tail = NULL;
     socket_mq_init();
+    printf("connect:OK\n");
 
     return 0;
 }
 
 int
 socket_send_remainbuffer(struct socket *s) {
-    if (s==NULL) {
+    if (s==NULL || s->fd==-1) {
         return -1;
     }
     while (s->head) {
@@ -174,7 +189,7 @@ append_sendbuffer(struct socket *s, const void * buffer, int sz, int n) {
 // return -1 when error
 int64_t
 socket_send(struct socket *s, const void * buffer, int sz) {
-    if (s==NULL) {
+    if (s==NULL || s->fd==-1) {
         fprintf(stderr, "socket_send.\n");
         return -1;
     }
@@ -193,7 +208,6 @@ socket_send(struct socket *s, const void * buffer, int sz) {
             }
         }
         if (n == sz) {
-            FREE((void*)buffer);
             return sz;
         }
         append_sendbuffer(s, buffer, sz, n);
@@ -206,7 +220,7 @@ socket_send(struct socket *s, const void * buffer, int sz) {
 // return -1 (ignore) when error
 static int
 recv_msg(struct socket *s, struct socket_message * result) {
-    if (s==NULL) {
+    if (s==NULL || s->fd==-1) {
         return -1;
     }
     int sz = s->size;
@@ -218,7 +232,7 @@ recv_msg(struct socket *s, struct socket_message * result) {
         case EINTR:
             break;
         case EAGAIN:
-            fprintf(stderr, "socket-server: EAGAIN capture.\n");
+            //fprintf(stderr, "socket-server: EAGAIN capture.\n");
             break;
         default:
             // close when error
@@ -252,7 +266,7 @@ write_block(char * buffer, int r, int pos) {
 
 void
 socket_msgdispatch(struct socket * s, dispatch_cb cb) {
-    if (s==NULL) {
+    if (s==NULL || s->fd==-1) {
         return;
     }
     struct socket_message sm;

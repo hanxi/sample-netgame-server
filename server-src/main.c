@@ -1,4 +1,6 @@
 #include "client_socket.h"
+#include "socket_mq.h"
+#include "common.h"
 
 #include <lua.h>
 #include <lualib.h>
@@ -37,7 +39,6 @@ call_lualoop() {
     return 0;
 }
 
-
 static void
 main_loop(struct socket * s) {
     for (;;) {
@@ -59,27 +60,54 @@ static int
 lconnect(lua_State * L) {
 	const char * addr = luaL_checkstring(L, 1);
 	int port = luaL_checkinteger(L, 2);
-    int ret = socket_connect(addr, port,&SOCKET);
+    int ret = socket_connect(addr, port,SOCKET);
 	if (ret) {
 		return luaL_error(L, "Connect %s %d failed", addr, port);
 	}
-	return 0;
+	return 1;
 }
 
 static int
 lsend(lua_State * L) {
 	size_t sz = 0;
 	const char * msg = luaL_checklstring(L, 1, &sz);
-    int ret = socket_send(SOCKET, msg, sz);
+    printf("msg:%s\n",msg);
+    int ret = socket_send(SOCKET,msg, sz);
+    printf("msg:%s\n",msg);
     lua_settop(L,0);
     lua_pushnumber(L,ret);
 	return 1;
 }
 
+int 
+lsocket(lua_State *L) {
+	luaL_Reg l[] = {
+		{"connect", lconnect},
+		{"send", lsend},
+		{NULL,NULL},
+	};
+	luaL_newlib(L,l);
+	return 1;
+}
+
+static void
+checkluaversion(lua_State *L) {
+	const lua_Number *v = lua_version(L);
+	if (v != lua_version(NULL))
+		fprintf(stderr,"multiple Lua VMs detected\n");
+	else if (*v != LUA_VERSION_NUM) {
+		fprintf(stderr,"Lua version mismatch: app. needs %f, Lua core provides %f\n",
+			(double)LUA_VERSION_NUM, (double)*v);
+	}
+}
+
 static void
 lua_init(const char * root) {
     L = luaL_newstate();
+	checkluaversion(L);
     luaL_openlibs(L);   // link lua lib
+
+	luaL_requiref(L, "socket", lsocket, 0);
 
     int err = luaL_loadstring(L, lua_config);
     assert(err == LUA_OK);
@@ -90,9 +118,6 @@ lua_init(const char * root) {
         lua_close(L);
         exit(1);
     }
-    // regist c function to lua
-    lua_register(L,"connect",lconnect);
-    lua_register(L,"send",lsend);
 }
 
 int
@@ -113,9 +138,16 @@ main(int argc, char * argv[]) {
     memset(root,0,i+1);
     memcpy(root,argv[0],i);
 
+    socket_mq_init();
+    SOCKET = socket_new();
+
     lua_init(root);
 
     main_loop(SOCKET);
 
+    socket_delete(SOCKET);
+    socket_mq_release();
+
     return 0;
 }
+

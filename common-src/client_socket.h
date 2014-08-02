@@ -5,7 +5,11 @@
 
 struct socket;
 
-int socket_connect(const char * addr, int port, struct socket **s);
+struct socket * socket_new();
+
+void socket_delete(struct socket * s);
+
+int socket_connect(const char * addr, int port, struct socket * s);
 
 int64_t socket_send(struct socket *s, const void * buffer, int sz);
 
