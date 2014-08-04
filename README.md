@@ -3,27 +3,50 @@
 
 > ### gateway
 
+> ### logic server
+
+> ### console client
+
 ## test in linux
 
 * compile
 
+
     $ make
+
 
 * start gateway
 
+
     $ ./bin.gateway/gateway
+
 
 * start client
 
+
+    $ ./bin.server/server
+    
+
+* start client
+
+
     $ lua ./bin.client/client.lua
+
+
+### about test
+
+1. start gateway, wait message from client or server
+
+2. start server, connect to gateway, gateway set server and save server fd
+
+3. start client, connect to gateway and connect server, send others message to server
+
+4. if you want connect to gateway as debugclient, change client handshake md5 string for "debug_md5" in client.lua
 
 ## TODO :
 
-> ### server : logic server
-
-> ### login server : by http
-
 > ### net protocal
+
 
 ## others :
 
