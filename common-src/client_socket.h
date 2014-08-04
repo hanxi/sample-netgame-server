@@ -2,6 +2,7 @@
 #define client_socket_h
 
 #include <netinet/in.h>
+#include <lua.h>
 
 struct socket;
 
@@ -17,8 +18,8 @@ int64_t socket_send(struct socket *s, const void * buffer, int sz);
 
 int socket_send_remainbuffer(struct socket *s);
 
-typedef int (*dispatch_cb)(int fd, const char * buffer, int size);
-void socket_msgdispatch(struct socket * s, dispatch_cb);
+typedef int (*dispatch_cb)(lua_State *L, int fd, const char * buffer, int size);
+void socket_msgdispatch(struct socket * s, dispatch_cb, void *L);
 
 #endif
 

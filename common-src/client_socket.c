@@ -269,7 +269,7 @@ write_block(char * buffer, int r, int pos) {
 }
 
 void
-socket_msgdispatch(struct socket * s, dispatch_cb cb) {
+socket_msgdispatch(struct socket * s, dispatch_cb cb, void * L) {
     if (s==NULL || s->fd==-1 || s->q==NULL) {
         return;
     }
@@ -290,7 +290,7 @@ socket_msgdispatch(struct socket * s, dispatch_cb cb) {
                 char * temp = MALLOC(size+2);
                 databuffer_read(&s->read_buffer,&s->mp,temp+2, size);
                 write_block(temp,size,0);
-                cb(s->fd,temp,size);
+                cb(L,s->fd,temp,size);
                 FREE(temp);
             }
             databuffer_reset(&s->read_buffer);

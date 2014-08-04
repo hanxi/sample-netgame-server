@@ -1,4 +1,4 @@
-local socket_c = require "socket.c"
+local socket_c = require "socket.core"
 
 local sockList = {}
 local socket = {}
