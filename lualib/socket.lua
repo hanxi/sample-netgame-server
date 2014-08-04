@@ -1,44 +1,64 @@
 local socket_c = require "socket.core"
 
-local sockList = {}
+local sockList_fd2sock = {}
+local sockList_name2fd = {}
+local sockToDel = {}
 local socket = {}
-local _meta = {
+local sock = {}
+local meta = {
+    __index = sock,
     __gc = function (self)
+        print("__GC__")
         self:close()
-        print("___GC")
     end,
+    __tostring = function (self)
+        return "[sock metatable] : "..self._name
+    end
 }
 
 function socket.connect (addr,port)
-    local sock = {
+    local name = addr..":"..port
+    if sockList_name2fd[name] then
+        socket.delsock(sockList_name2fd[name])
+    end
+    local obj ={
         _socket = socket_c.connect(addr,port),
-        send = function (sock,msg)
-            print("socket:send:",sock._socket);
-            return socket_c.send(sock._socket,msg)
-        end,
-        close = function (sock)
-            local fd = socket_c.get_fd(sock._socket)
-            sockList[fd] = nil
-            return socket_c.disconnect(sock._socket)
-        end,
-        get_fd = function (sock)
-            return socket_c.get_fd(sock._socket)
-        end,
+        _name = name,
     }
-    print("socket.connect:",sock._socket);
-    sock = setmetatable(sock,_meta)
-    sockList[sock.get_fd(sock)] = sock
+    local sock = setmetatable(obj,meta)
+    local fd = sock:getfd()
+    sockList_fd2sock[fd] = sock
+    sockList_name2fd[addr..port] = fd
     return sock
 end
 
+function sock:close()
+    local fd = self:getfd()
+    sockList_fd2sock[fd] = nil
+    socket_c.disconnect(self._socket)
+end
+
+function sock:disconnect()
+    self:close()
+    setmetatable(self,nil)
+end
+
+function sock:send (msg)
+    return socket_c.send(self._socket,msg)
+end
+
+function sock:getfd ()
+    return socket_c.getfd(self._socket)
+end
+
 function socket.loop ()
-    for _,sock in pairs(sockList) do
+    for fd,sock in pairs(sockList_fd2sock) do
         socket_c.loop(sock._socket)
     end
 end
 
-function socket.get_sock(fd)
-    return sockList[fd]
+function socket.delsock(fd)
+    sockList_fd2sock[fd] = nil
 end
 
 return socket

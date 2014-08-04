@@ -20,10 +20,10 @@ lsend(lua_State * L) {
 }
 
 static int
-lget_fd(lua_State * L) {
+lgetfd(lua_State * L) {
     struct socket * s = lua_touserdata(L,1);
     lua_settop(L,0);
-    int fd = socket_get_fd(s);
+    int fd = socket_getfd(s);
     lua_pushnumber(L,fd);
     return 1;
 }
@@ -37,18 +37,26 @@ lconnect(lua_State * L) {
 	if (ret) {
 		return luaL_error(L, "Connect %s %d failed", addr, port);
 	}
-    int fd = socket_get_fd(s);
+    int fd = socket_getfd(s);
     printf("lconnect:%d,fd=%d\n",(int)lconnect,fd);
     lua_pushlightuserdata(L,s);
 	return 1;
 }
 
 static int
-lua_dispatch(lua_State *L, int fd, const char * buffer, int size) {
-    lua_getglobal(L,"msg_dispatch");
-    lua_pushnumber(L,fd);
-    lua_pushlstring(L,buffer,size);
-    int err = lua_pcall(L, 2, 0, 0);
+lua_dispatch(lua_State *L, struct socket *s, const char * buffer, int size) {
+    int err = 0;
+    int fd = socket_getfd(s);
+    if (size==0) {
+        lua_getglobal(L,"disconnect_dispatch");
+        lua_pushnumber(L,fd);
+        err = lua_pcall(L, 1, 0, 0);
+    } else {
+        lua_getglobal(L,"msg_dispatch");
+        lua_pushnumber(L,fd);
+        lua_pushlstring(L,buffer,size);
+        err = lua_pcall(L, 2, 0, 0);
+    }
     if (err) {
         fprintf(stderr,"%s\n",lua_tostring(L,-1));
         return 1;
@@ -59,8 +67,8 @@ lua_dispatch(lua_State *L, int fd, const char * buffer, int size) {
 static int
 lsocketloop(lua_State * L) {
     struct socket * s = lua_touserdata(L,1);
-    socket_msgdispatch(s,lua_dispatch,L);
     socket_send_remainbuffer(s);
+    socket_msgdispatch(s,lua_dispatch,L);
     return 1;
 }
 
@@ -78,7 +86,7 @@ luaopen_socket_core(lua_State *L) {
         {"connect",lconnect},
         {"disconnect",ldisconnect},
         {"send",lsend},
-        {"get_fd",lget_fd},
+        {"getfd",lgetfd},
         {"loop",lsocketloop},
 		{NULL,NULL},
     };

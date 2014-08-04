@@ -17,7 +17,6 @@
 
 #define MIN_READ_BUFFER 64
 #define SOCKET_CLOSE 1
-#define SOCKET_ERROR 4
 
 struct write_buffer {
     struct write_buffer * next;
@@ -47,6 +46,7 @@ force_close(struct socket *s) {
         FREE(tmp);
     }
     s->head = s->tail = NULL;
+    databuffer_clear(&s->read_buffer, &s->mp);
     messagepool_free(&s->mp);
     close(s->fd);
     if (s->q) {
@@ -56,7 +56,7 @@ force_close(struct socket *s) {
 }
 
 int 
-socket_get_fd(struct socket * s) {
+socket_getfd(struct socket * s) {
     return s->fd;
 }
 
@@ -68,6 +68,8 @@ socket_new() {
     s->wb_size = 0;
     s->head = NULL;
     s->tail = NULL;
+	memset(&s->read_buffer, 0, sizeof(s->read_buffer));
+	memset(&s->mp, 0, sizeof(s->mp));
     return s;
 }
 
@@ -241,7 +243,7 @@ recv_msg(struct socket *s, struct socket_message * result) {
         default:
             // close when error
             force_close(s);
-            return SOCKET_ERROR;
+            return SOCKET_CLOSE;
         }
         return -1;
     }
@@ -277,6 +279,10 @@ socket_msgdispatch(struct socket * s, dispatch_cb cb, void * L) {
     int ret = recv_msg(s, &sm);
     if (ret==0) {
         socket_mq_push(s->q,&sm);
+    } else if (ret==SOCKET_CLOSE) {
+        cb(L,s,NULL,0);
+        s->fd = -1;
+        return;
     }
     struct socket_message msg;
     while (!socket_mq_pop(s->q,&msg)) {
@@ -290,7 +296,7 @@ socket_msgdispatch(struct socket * s, dispatch_cb cb, void * L) {
                 char * temp = MALLOC(size+2);
                 databuffer_read(&s->read_buffer,&s->mp,temp+2, size);
                 write_block(temp,size,0);
-                cb(L,s->fd,temp,size);
+                cb(L,s,temp,size);
                 FREE(temp);
             }
             databuffer_reset(&s->read_buffer);

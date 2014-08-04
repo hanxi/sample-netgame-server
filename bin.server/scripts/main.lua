@@ -8,9 +8,8 @@ CONFIG_IP = "127.0.0.1"
 CONFIG_PORT = 8888
 
 local sock = socket.connect(CONFIG_IP,CONFIG_PORT)
-print("sock:fd",sock:get_fd())
 
-local function send_package(pack)
+local function send_package(sock,pack)
 	local size = #pack
 	local package = string.char(bit32.extract(size,8,8)) ..
 		string.char(bit32.extract(size,0,8))..
@@ -19,7 +18,7 @@ local function send_package(pack)
 	print(sock:send(package))
 end
 
-local function handshake()
+local function handshake(sock)
     local protId = 100
     local str = HANDSHAKE_SERVER_MD5
     print(string.format("str=%s",str))
@@ -27,9 +26,11 @@ local function handshake()
 		string.char(bit32.extract(protId,0,8))..
 		str
     print(string.format("size=%s,str=%s",#sendstr,str))
-	send_package(sendstr)
+	send_package(sock,sendstr)
 end
-handshake()
+
+handshake(sock)
+print(sock)
 
 function msg_dispatch(fd,buffer)
     print("msg_dispatch:",fd,buffer)
@@ -37,8 +38,12 @@ function msg_dispatch(fd,buffer)
     print(sock)
 end
 
+function disconnect_dispatch(fd)
+    print("disconnect_dispatch:",fd)
+    socket.delsock(fd)
+end
+
 function loop()
---    print("lua loop")
     socket.loop()
 end
 
