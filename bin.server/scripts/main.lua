@@ -34,7 +34,7 @@ print(sock)
 
 function msg_dispatch(fd,buffer)
     print("msg_dispatch:",fd,buffer)
-    local sock = socket.get_sock(fd)
+    local sock = socket.getsock(fd)
     print(sock)
 end
 

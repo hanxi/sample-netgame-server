@@ -61,5 +61,9 @@ function socket.delsock(fd)
     sockList_fd2sock[fd] = nil
 end
 
+function socket.getsock(fd)
+    return sockList_fd2sock[fd]
+end
+
 return socket
 
