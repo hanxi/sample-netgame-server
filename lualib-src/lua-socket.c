@@ -43,6 +43,12 @@ lconnect(lua_State * L) {
 	return 1;
 }
 
+static inline int
+read_block(const char * buffer, int pos) {
+    int r = (int)buffer[pos] << 8 | (int)buffer[pos+1];
+    return r;
+}
+
 static int
 lua_dispatch(lua_State *L, struct socket *s, const char * buffer, int size) {
     int err = 0;
@@ -52,10 +58,13 @@ lua_dispatch(lua_State *L, struct socket *s, const char * buffer, int size) {
         lua_pushnumber(L,fd);
         err = lua_pcall(L, 1, 0, 0);
     } else {
+        int cfd = read_block(buffer,0);
         lua_getglobal(L,"msg_dispatch");
         lua_pushnumber(L,fd);
-        lua_pushlstring(L,buffer,size);
-        err = lua_pcall(L, 2, 0, 0);
+        lua_pushnumber(L,cfd);
+        lua_pushlstring(L,buffer+2,size-2);
+        lua_pushnumber(L,size);
+        err = lua_pcall(L, 4, 0, 0);
     }
     if (err) {
         fprintf(stderr,"%s\n",lua_tostring(L,-1));

@@ -293,9 +293,8 @@ socket_msgdispatch(struct socket * s, dispatch_cb cb, void * L) {
                 fprintf(stderr, "Recv socket message > 16M");
                 databuffer_clear(&s->read_buffer,&s->mp);
             } else if (size>=2) {
-                char * temp = MALLOC(size+2);
-                databuffer_read(&s->read_buffer,&s->mp,temp+2, size);
-                write_block(temp,size,0);
+                char * temp = MALLOC(size);
+                databuffer_read(&s->read_buffer,&s->mp,temp, size);
                 cb(L,s,temp,size);
                 FREE(temp);
             }

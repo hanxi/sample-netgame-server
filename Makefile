@@ -6,7 +6,7 @@ LUA_STATICLIB := 3rd/lua/liblua.a
 LUA_LIB ?= $(LUA_STATICLIB)
 LUA_INC ?= 3rd/lua
 
-LUA_CLIB = clientsocket md5 socket
+LUA_CLIB = clientsocket md5 socket lproto
 LUA_CLIB_PATH ?= luaclib
 BIN_GATEWAY_PATH ?= bin.gateway
 BIN_SERVER_PATH ?= bin.server
@@ -40,6 +40,10 @@ $(LUA_CLIB_PATH)/md5.so : 3rd/lua-md5/md5.c 3rd/lua-md5/md5lib.c 3rd/lua-md5/com
 
 $(LUA_CLIB_PATH)/socket.so: lualib-src/lua-socket.c common-src/socket_mq.c common-src/client_socket.c 
 	$(CC) $(CFLAGS) $(SHARED) -o $@ $^ $(INCLS) -I$(LUA_INC)
+
+$(LUA_CLIB_PATH)/lproto.so: 3rd/lproto/src/lproto.c 
+	$(CC) $(CFLAGS) $(SHARED) -o $@ $^ $(INCLS) -I$(LUA_INC)
+	cp 3rd/lproto/lualib/lproto.lua lualib/
 
 ### gateway
 GATEWAY_SRC = gate_mq.c gate_socket.c gate_main.c main.c

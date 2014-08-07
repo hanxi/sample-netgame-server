@@ -6,7 +6,7 @@ HANDSHAKE_DEBUG_MD5  = "8d5984dfa10f855f23795857366783fc"
 CONFIG_IP = "127.0.0.1"
 CONFIG_PORT = 8888
 
-function msg_dispatch(id,buffer)
-    print("msg_dispatch:",id,buffer)
+function msg_dispatch(id,buffer,sz)
+    print("msg_dispatch:",id,buffer,sz)
 end
 

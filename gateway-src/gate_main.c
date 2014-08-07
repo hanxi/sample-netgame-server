@@ -66,7 +66,8 @@ lua_dispatch(struct gate *g, int id, const char * buffer, int size) {
     lua_getglobal(g->l,"msg_dispatch");
     lua_pushnumber(g->l,id);
     lua_pushlstring(g->l,buffer,size);
-    int err = lua_pcall(g->l, 2, 0, 0);
+    lua_pushnumber(g->l,size);
+    int err = lua_pcall(g->l, 3, 0, 0);
     if (err) {
         fprintf(stderr,"%s\n",lua_tostring(g->l,-1));
         return 1;
@@ -88,11 +89,11 @@ write_block(char * buffer, int r, int pos) {
 
 static int
 handshake(struct gate *g, struct connection *c, int id, char * buffer, int size) {
-    // buffer : size | protId | device
+    // buffer : size | -1 | protId | device
     int need_free_buffer = 0;
-    int dlen = size-4;
+    int dlen = size-6;
     char *device = MALLOC(dlen+1);
-    memcpy(device,buffer+4,dlen);
+    memcpy(device,buffer+6,dlen);
     device[dlen] = '\0';
 
     lua_getglobal(g->l,"HANDSHAKE_CLIENT_MD5");
@@ -137,16 +138,16 @@ _clear:
 
 static int
 handlemsg(struct gate *g, struct connection *c, int id, char * buffer, int size) {
-    // buffer : size | protId | id | -- 6byte
+    // buffer : size | id | protId | -- 6byte
     int not_need_free_buffer = 1;
     int ret = 0;         // need_free_buffer
-    int protId = read_block(buffer,2);
-    int mid = read_block(buffer,4);
+    int mid = read_block(buffer,2);
+    int protId = read_block(buffer,4);
     switch (c->conn_tp) {
     case 'C':
         if (g->sid>0) {
             // write cid to buffer
-            write_block(buffer,id,4);
+            write_block(buffer,id,2);
             if(gate_socket_send(g->sid, buffer, size)<0) {
                 fprintf(stderr,"client send msg to server error.[protId:%d]\n",protId);
             }
@@ -159,7 +160,7 @@ handlemsg(struct gate *g, struct connection *c, int id, char * buffer, int size)
     case 'S':
         if (hashid_lookup(&g->hash, mid)>0) {
             // write sid to buffer
-            write_block(buffer,g->sid,4);
+            write_block(buffer,g->sid,2);
             if(gate_socket_send(mid, buffer, size)<0) {
                 fprintf(stderr,"server send msg to client error.[protId:%d]\n",protId);
             }
@@ -171,8 +172,8 @@ handlemsg(struct gate *g, struct connection *c, int id, char * buffer, int size)
             int cid = mid;
             char * temp = MALLOC(sz);
             write_block(temp,sz,0);
-            write_block(temp,protId,2);
-            write_block(temp,cid,4);
+            write_block(temp,cid,2);
+            write_block(temp,protId,4);
             if(gate_socket_send(g->sid, temp, sz)<0) {
                 fprintf(stderr,"client disconnect. send msg to server error.[protId:%d]\n",protId);
                 FREE(temp);
@@ -180,7 +181,7 @@ handlemsg(struct gate *g, struct connection *c, int id, char * buffer, int size)
         }
         break;
     case 'D':
-        lua_dispatch(g,id,buffer,size);
+        lua_dispatch(g,id,buffer+2,size-2);
         break;
     default:
         fprintf(stderr,"unknown connection. id=%d.\n",id);
@@ -203,12 +204,11 @@ dispatch_message(struct gate *g, struct connection *c, int id, void * data, int 
             fprintf(stderr, "Recv socket message > 16M");
             databuffer_clear(&c->buffer,&g->mp);
             gate_socket_close(id);
-        } else if (size>=4) {
+        } else if (size>=6) {
             char * temp = MALLOC(size+2);
             databuffer_read(&c->buffer,&g->mp,temp+2, size);
-
             write_block(temp,size,0);
-            int protId = read_block(temp,2);
+            int protId = read_block(temp,4);
 
             printf("size=%d,protId=%d,id=%d\n",size,protId,id);
 
