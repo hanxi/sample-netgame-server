@@ -1,3 +1,6 @@
 [submodule "3rd/socket-server"]
 	path = 3rd/socket-server
 	url = git@github.com:hanxi/socket-server.git
+[submodule "3rd/lproto"]
+	path = 3rd/lproto
+	url = https://github.com/hanxi/lproto
