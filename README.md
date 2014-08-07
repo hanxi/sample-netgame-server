@@ -14,13 +14,13 @@
 
 * compile and run
 
-
+```
     $ make                          # compile
     $ ./bin.gateway/gateway         # start gateway (on tty 1)
     $ ./bin.server/server           # start server (on other tty2)
     $ lua ./bin.client/client.lua   # start client (on other tty3)
     $ 1 {ping="xxx",ret=2,}         # send request to server (on client tty3)
-
+```
 
 ### about test
 
