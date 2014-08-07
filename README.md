@@ -14,11 +14,13 @@
 
 * compile and run
 
+```
     $ make                          # compile
     $ ./bin.gateway/gateway         # start gateway (on tty 1)
     $ ./bin.server/server           # start server (on other tty2)
     $ lua ./bin.client/client.lua   # start client (on other tty3)
     $ 1 {ping="xxx",ret=2,}         # send request to server (on client tty3)
+```
 
 ### about test
 
@@ -28,7 +30,9 @@
 
 3. start client, connect to gateway and connect server, send others message to server
 
-4. if you want connect to gateway as debugclient, change client handshake md5 string for "debug_md5" in client.lua
+4. input cmd in client tty: 1 {ping="xxx",ret=2,} . will send protocal to server. cmd like : protId {} (prot must define)
+
+5. if you want connect to gateway as debugclient, change client handshake md5 string for "debug_md5" in client.lua
 
 
 ## others :
