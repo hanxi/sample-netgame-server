@@ -7,31 +7,18 @@
 
 > ### console client
 
+> ### net protocal (lproto)
+
+
 ## test in linux
 
-* compile
+* compile and run
 
-
-    $ make
-
-
-* start gateway
-
-
-    $ ./bin.gateway/gateway
-
-
-* start client
-
-
-    $ ./bin.server/server
-    
-
-* start client
-
-
-    $ lua ./bin.client/client.lua
-
+    $ make                          # compile
+    $ ./bin.gateway/gateway         # start gateway (on tty 1)
+    $ ./bin.server/server           # start server (on other tty2)
+    $ lua ./bin.client/client.lua   # start client (on other tty3)
+    $ 1 {ping="xxx",ret=2,}         # send request to server (on client tty3)
 
 ### about test
 
@@ -42,10 +29,6 @@
 3. start client, connect to gateway and connect server, send others message to server
 
 4. if you want connect to gateway as debugclient, change client handshake md5 string for "debug_md5" in client.lua
-
-## TODO :
-
-> ### net protocal
 
 
 ## others :
