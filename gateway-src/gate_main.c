@@ -106,12 +106,9 @@ handshake(struct gate *g, struct connection *c, int id, char * buffer, int size)
     const char * DEBUG_MD5 = lua_tostring(g->l,-1);
     lua_settop(g->l,0);
 
-    printf("len:%d,%d\n",dlen,strlen(CLIENT_MD5));
-    printf("device.handshake : %s\n",device);
-
     if (dlen==strlen(CLIENT_MD5)
         && strncmp(device,CLIENT_MD5,dlen)==0) {        // client connect to server
-        printf("new client connect. id=%d\n",id);
+        printf("[handshake] new client connect. id=%d\n",id);
         c->conn_tp = 'C';
     } else if (dlen==strlen(SERVER_MD5)
         && strncmp(device,SERVER_MD5,dlen)==0) { // server connect
@@ -120,11 +117,11 @@ handshake(struct gate *g, struct connection *c, int id, char * buffer, int size)
             fprintf(stderr,"already connect:%s\n",c->remote_name);
             goto _clear;
         }
-        printf("new server connect. id=%d\n",id);
+        printf("[handshake] new server connect. id=%d\n",id);
         g->sid = id;
     } else if (dlen==strlen(DEBUG_MD5)
         && strncmp(device,DEBUG_MD5,dlen)==0) {
-        printf("new debugclient connect. id=%d\n",id);
+        printf("[handshake] new debugclient connect. id=%d\n",id);
         c->conn_tp = 'D';
     } else {
         goto _clear;
@@ -298,7 +295,7 @@ start_listen(struct gate *g, const char * host, int port) {
         return 1;
     }
     gate_socket_start(g->listen_id);
-    printf("listening listen_id=%d\n",g->listen_id);
+    printf("listening listen_id:%d\n",g->listen_id);
     return 0;
 }
 

@@ -54,7 +54,7 @@ function serialize(obj,n)
     end
     return lua
 end
-print(serialize(prot._dict))
+print("protDict:\n"..serialize(prot._dict))
 
 
 local socket = require "clientsocket"
@@ -115,7 +115,7 @@ local function handshake()
         string.char(bit32.extract(protId,8,8)) ..
         string.char(bit32.extract(protId,0,8))..
         str
-    print(string.format("size=%s,str=%s",#sendstr,str))
+    print(string.format("[handshake] size=%s,client md5 :%s",#sendstr,str))
     send_package(fd, sendstr)
 end
 
@@ -134,7 +134,7 @@ while true do
         local result = string.sub(v,3,#v)
         local sz = #v - 2
         local ret,protId,pp = prot:unpack(result,sz)
-        print(string.format("Response: sz=%d,sfd=%d,protId=%d", sz,sfd,protId))
+        print(string.format("recive prot: sz=%d,sfd=%d,protId=%d", sz,sfd,protId))
         print(serialize(pp))
     end
     local cmd = socket.readstdin()
@@ -144,7 +144,6 @@ while true do
         -- cmd > protId
         local protId = tonumber(args[1])
         local p = load("return "..table.concat(args," ", 2))()
-        print(protId,p)
         local sz,str = prot:pack(protId,p)
         local sendstr =
             string.char(bit32.extract(fd,8,8)) ..

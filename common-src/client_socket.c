@@ -133,7 +133,6 @@ socket_connect(const char * addr, int port, struct socket * s) {
     s->head = NULL;
     s->tail = NULL;
     s->q = socket_mq_new();
-    printf("connect:OK\n");
 
     return 0;
 }

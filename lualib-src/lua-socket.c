@@ -37,8 +37,6 @@ lconnect(lua_State * L) {
 	if (ret) {
 		return luaL_error(L, "Connect %s %d failed", addr, port);
 	}
-    int fd = socket_getfd(s);
-    printf("lconnect:%d,fd=%d\n",(int)lconnect,fd);
     lua_pushlightuserdata(L,s);
 	return 1;
 }

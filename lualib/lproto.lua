@@ -104,7 +104,6 @@ function prot:unpack(buffer,sz)
     if not protDict[protId] then
         print(string.format("unknow prot. protId=%d",protId))
     end
-    print("protId=",protId)
     for _,key in ipairs(protDict[protId]._keysort) do
         local tp = type(protDict[protId][key])
         if tp=="table" then
