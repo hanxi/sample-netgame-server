@@ -32,12 +32,12 @@ CONFIG_PORT = 8888
 local sock = socket.connect(CONFIG_IP,CONFIG_PORT)
 
 local function send_package(sock,pack)
-	local size = #pack
-	local package = string.char(bit32.extract(size,8,8)) ..
-		string.char(bit32.extract(size,0,8))..
-		pack
+    local size = #pack
+    local package = string.char(bit32.extract(size,8,8)) ..
+        string.char(bit32.extract(size,0,8))..
+        pack
 
-	sock:send(package)
+    sock:send(package)
 end
 
 local function handshake(sock)
@@ -45,14 +45,19 @@ local function handshake(sock)
     local str = HANDSHAKE_SERVER_MD5
     local fd = sock:getfd()
     print(string.format("server md5 : %s",str))
-	local sendstr = 
-		string.char(bit32.extract(fd,8,8))..
-		string.char(bit32.extract(fd,0,8))..
+    local sendstr =
+        string.char(bit32.extract(fd,8,8))..
+        string.char(bit32.extract(fd,0,8))..
         string.char(bit32.extract(protId,8,8)) ..
-		string.char(bit32.extract(protId,0,8))..
-		str
-    print(string.format("[handshake] size=%s,str=%s",#sendstr,str))
-	send_package(sock,sendstr)
+        string.char(bit32.extract(protId,0,8))..
+        str
+
+    local size = #sendstr
+    local package = string.char(bit32.extract(size,8,8)) ..
+        string.char(bit32.extract(size,0,8))..
+        sendstr
+    print(string.format("[handshake] size=%s,str=%s",size,str))
+    sock:sendstring(package)
 end
 
 handshake(sock)
@@ -89,9 +94,9 @@ function serialize(obj,n)
     return lua
 end
 
-function msg_dispatch(sfd,cfd,buffer,sz)
+function msg_dispatch(sfd,buffer,sz)
     local sock = socket.getsock(sfd)
-    local ret,protId,pp = prot:unpack(buffer,sz)
+    local ret,cfd,protId,pp = prot:unpack(buffer,sz)
     print(string.format("[msg_dispatch] sfd=%d,cfd=%d,protId=%d,sz=%d,sock=%s",sfd,cfd,protId,sz,sock))
     print("recive prot :\n"..serialize(pp))
     if protId == 1 then
@@ -109,12 +114,8 @@ function msg_dispatch(sfd,cfd,buffer,sz)
                 },
             },
         }
-        local sz,str = prot:pack(protId,p)
-        local sendstr = 
-            string.char(bit32.extract(cfd,8,8))..
-            string.char(bit32.extract(cfd,0,8))..
-            str
-        send_package(sock,sendstr)
+        local sz,buf = prot:pack(cfd,protId,p)
+        sock:sendbuffer(buf,sz)
     end
 end
 

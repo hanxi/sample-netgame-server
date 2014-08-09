@@ -174,11 +174,11 @@ socket_send_remainbuffer(struct socket *s) {
 }
 
 static void
-append_sendbuffer(struct socket *s, const void * buffer, int sz, int n) {
+append_sendbuffer(struct socket *s, void * buffer, int sz, int n) {
     struct write_buffer * buf = MALLOC(sizeof(*buf));
-    buf->ptr = (char *)buffer+n;
+    buf->ptr = buffer+n;
     buf->sz = sz - n;
-    buf->buffer = (void *)buffer;
+    buf->buffer = buffer;
     buf->next = NULL;
     s->wb_size += buf->sz;
     if (s->head == NULL) {
@@ -193,7 +193,7 @@ append_sendbuffer(struct socket *s, const void * buffer, int sz, int n) {
 
 // return -1 when error
 int64_t
-socket_send(struct socket *s, const void * buffer, int sz) {
+socket_send(struct socket *s, void * buffer, int sz) {
     if (s==NULL || s->fd==-1) {
         fprintf(stderr, "erro . socket_send. %d\n",(int)s);
         return -1;
@@ -213,6 +213,7 @@ socket_send(struct socket *s, const void * buffer, int sz) {
             }
         }
         if (n == sz) {
+            FREE(buffer);
             return sz;
         }
         append_sendbuffer(s, buffer, sz, n);
@@ -292,9 +293,10 @@ socket_msgdispatch(struct socket * s, dispatch_cb cb, void * L) {
                 fprintf(stderr, "Recv socket message > 16M");
                 databuffer_clear(&s->read_buffer,&s->mp);
             } else if (size>=2) {
-                char * temp = MALLOC(size);
-                databuffer_read(&s->read_buffer,&s->mp,temp, size);
-                cb(L,s,temp,size);
+                char * temp = MALLOC(size+2);
+                databuffer_read(&s->read_buffer,&s->mp,temp+2, size);
+                write_block(temp,size,0);
+                cb(L,s,temp,size+2);
                 FREE(temp);
             }
             databuffer_reset(&s->read_buffer);

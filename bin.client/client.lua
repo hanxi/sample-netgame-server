@@ -63,16 +63,6 @@ local md5 = require "md5"
 
 local fd = assert(socket.connect("127.0.0.1", 8888))
 
-local function send_package(fd, pack)
-    local size = #pack
-    local package =
-        string.char(bit32.extract(size,8,8)) ..
-        string.char(bit32.extract(size,0,8))..
-        pack
-
-    socket.send(fd, package)
-end
-
 local function unpack_package(text)
     local size = #text
     if size < 2 then
@@ -115,8 +105,12 @@ local function handshake()
         string.char(bit32.extract(protId,8,8)) ..
         string.char(bit32.extract(protId,0,8))..
         str
-    print(string.format("[handshake] size=%s,client md5 :%s",#sendstr,str))
-    send_package(fd, sendstr)
+    local size = #sendstr
+    local package =
+        string.char(bit32.extract(size,8,8)) ..
+        string.char(bit32.extract(size,0,8))..
+        sendstr
+    socket.sendstring(fd, package)
 end
 
 local last = ""
@@ -144,12 +138,9 @@ while true do
         -- cmd > protId
         local protId = tonumber(args[1])
         local p = load("return "..table.concat(args," ", 2))()
-        local sz,str = prot:pack(protId,p)
-        local sendstr =
-            string.char(bit32.extract(fd,8,8)) ..
-            string.char(bit32.extract(fd,0,8))..
-            str
-        send_package(fd, sendstr)
+        local sz,buffer = prot:pack(fd,protId,p)
+        print(sz,buffer)
+        socket.sendbuffer(fd, buffer,sz)
         socket.usleep(100000)
     end
 end

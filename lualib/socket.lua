@@ -43,8 +43,12 @@ function sock:disconnect()
     setmetatable(self,nil)
 end
 
-function sock:send (msg)
-    return socket_c.send(self._socket,msg)
+function sock:sendbuffer (buffer,sz)
+    return socket_c.sendstring(self._socket,buffer,sz)
+end
+
+function sock:sendstring (msg)
+    return socket_c.sendstring(self._socket,msg)
 end
 
 function sock:getfd ()

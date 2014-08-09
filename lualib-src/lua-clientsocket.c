@@ -67,12 +67,30 @@ block_send(lua_State *L, int fd, const char * buffer, int sz) {
 	string message
  */
 static int
-lsend(lua_State *L) {
+lsendstring(lua_State *L) {
 	size_t sz = 0;
 	int fd = luaL_checkinteger(L,1);
 	const char * msg = luaL_checklstring(L, 2, &sz);
 
 	block_send(L, fd, msg, (int)sz);
+
+	return 0;
+}
+
+
+/*
+	integer fd
+	lightuserdata buffer
+    integer sz
+ */
+static int
+lsendbuffer(lua_State *L) {
+	int fd = luaL_checkinteger(L,1);
+    void * buffer = lua_touserdata(L,2);
+    int sz = luaL_checkinteger(L,3);
+
+    block_send(L, fd, buffer, sz);
+    free(buffer);
 
 	return 0;
 }
@@ -188,7 +206,8 @@ luaopen_clientsocket(lua_State *L) {
 	luaL_Reg l[] = {
 		{ "connect", lconnect },
 		{ "recv", lrecv },
-		{ "send", lsend },
+		{ "sendstring", lsendstring },
+		{ "sendbuffer", lsendbuffer },
 		{ "close", lclose },
 		{ "usleep", lusleep },
 		{ NULL, NULL },

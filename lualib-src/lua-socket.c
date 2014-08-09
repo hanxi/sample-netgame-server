@@ -7,13 +7,27 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 
 static int
-lsend(lua_State * L) {
+lsendbuffer(lua_State * L) {
     struct socket * s = lua_touserdata(L,1);
-	size_t sz = 0;
-	const char * msg = luaL_checklstring(L, 2, &sz);
-    int ret = socket_send(s,msg, sz);
+    void * buffer = lua_touserdata(L,2);
+    int sz = lua_tonumber(L,3);
+    int ret = socket_send(s,buffer, sz);
+    lua_settop(L,0);
+    lua_pushnumber(L,ret);
+	return 1;
+}
+
+static int
+lsendstring(lua_State * L) {
+    struct socket * s = lua_touserdata(L,1);
+    size_t sz=0;
+    const char * str = lua_tolstring(L,2,&sz);
+    void * buffer = MALLOC(sz);
+    memcpy(buffer,str,sz);
+    int ret = socket_send(s,buffer, sz);
     lua_settop(L,0);
     lua_pushnumber(L,ret);
 	return 1;
@@ -48,7 +62,7 @@ read_block(const char * buffer, int pos) {
 }
 
 static int
-lua_dispatch(lua_State *L, struct socket *s, const char * buffer, int size) {
+lua_dispatch(lua_State *L, struct socket *s, char * buffer, int size) {
     int err = 0;
     int fd = socket_getfd(s);
     if (size==0) {
@@ -56,13 +70,11 @@ lua_dispatch(lua_State *L, struct socket *s, const char * buffer, int size) {
         lua_pushnumber(L,fd);
         err = lua_pcall(L, 1, 0, 0);
     } else {
-        int cfd = read_block(buffer,0);
         lua_getglobal(L,"msg_dispatch");
         lua_pushnumber(L,fd);
-        lua_pushnumber(L,cfd);
-        lua_pushlstring(L,buffer+2,size-2);
+        lua_pushlightuserdata(L,buffer);
         lua_pushnumber(L,size);
-        err = lua_pcall(L, 4, 0, 0);
+        err = lua_pcall(L, 3, 0, 0);
     }
     if (err) {
         fprintf(stderr,"%s\n",lua_tostring(L,-1));
@@ -92,7 +104,8 @@ luaopen_socket_core(lua_State *L) {
 	luaL_Reg l[] = {
         {"connect",lconnect},
         {"disconnect",ldisconnect},
-        {"send",lsend},
+        {"sendbuffer",lsendbuffer},
+        {"sendstring",lsendstring},
         {"getfd",lgetfd},
         {"loop",lsocketloop},
 		{NULL,NULL},
@@ -100,3 +113,4 @@ luaopen_socket_core(lua_State *L) {
 	luaL_newlib(L,l);
     return 1;
 }
+

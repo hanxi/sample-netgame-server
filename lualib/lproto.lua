@@ -7,6 +7,8 @@ local meta = {
     __index = prot,
 }
 local BUFFER_MAX_LEN = 10240
+local TINTEGER = 1
+local TSTRING  = 2
 
 --[[ buffer content
 -- | - 2byte protId - | - prot - |
@@ -55,37 +57,45 @@ function lproto.initProt(protDict)
 end
 
 -- return : sz,buffer
-function prot:pack(protId,p)
+function prot:pack(fd,protId,p)
     local protDict = self._dict
     local errstr = string.format("proto is too large. max buffer size : %d",BUFFER_MAX_LEN)
-    lproto_c.packinit()
-    local ret = lproto_c.writeid(protId)
+    local sz = 2
+    local ret = lproto_c.write_2byte(fd,sz)
+    sz = sz + ret
+    local ret = lproto_c.write_2byte(protId,sz)
+    sz = sz + ret
     for _,key in ipairs(protDict[protId]._keysort) do
         local tp = type(protDict[protId][key])
         if tp=="table" then
-            local ret = lproto_c.write(#p[key])
+            ret = lproto_c.write(#p[key],sz)
             if ret>=BUFFER_MAX_LEN then
                 print(errstr)
-                return -1
+                return -2
             end
+            sz = sz + ret
             for _,v in ipairs(p[key]) do
                 for _,k in ipairs(protDict[protId][key]._keysort) do
-                    local ret = lproto_c.write(v[k])
+                    ret = lproto_c.write(v[k],sz)
                     if ret>=BUFFER_MAX_LEN then
                         print(errstr)
-                        return -1
+                        return -3
                     end
+                    sz = sz + ret
                 end
             end
         else
-            local ret = lproto_c.write(p[key])
+            local ret = lproto_c.write(p[key],sz)
             if ret>=BUFFER_MAX_LEN then
                 print(errstr)
                 return -3
             end
+            sz = sz + ret
         end
     end
-    return lproto_c.getpack()
+    local ret = lproto_c.write_2byte(sz-2,0)
+    print("buffer size=",sz)
+    return lproto_c.newpack(sz)
 end
 
 -- return : ret(0), protId, p
@@ -94,13 +104,20 @@ function prot:unpack(buffer,sz)
         print(string.format("buffer size limit : %d",BUFFER_MAX_LEN))
         return -1
     end
-    lproto_c.unpackinit(sz,buffer)
+    lproto_c.unpackinit(buffer)
     local p = {}
     local protDict = self._dict
-    local ret,protId = lproto_c.readid()
+    local offset = 2
+    local ret,fd = lproto_c.read_2byte(offset)
     if ret<0 then
         return -2
     end
+    offset = offset + ret
+    local ret,protId = lproto_c.read_2byte(offset)
+    if ret<0 then
+        return -2
+    end
+    offset = offset + ret
     if not protDict[protId] then
         print(string.format("unknow prot. protId=%d",protId))
     end
@@ -108,31 +125,38 @@ function prot:unpack(buffer,sz)
         local tp = type(protDict[protId][key])
         if tp=="table" then
             p[key] = {}
-            local ret,n = lproto_c.read("number")
+            local ret,n = lproto_c.read(TINTEGER,offset)
             if ret<0 then
                 return -3
             end
+            offset = offset + ret
             for i=1,n do
                 local temp = {}
                 for _,k in ipairs(protDict[protId][key]._keysort) do
                     local ttp = type(protDict[protId][key][k])
-                    local ret,v = lproto_c.read(ttp)
+                    local ittp = TINTEGER
+                    if ttp=="string" then ittp = TSTRING end
+                    local ret,v = lproto_c.read(ittp,offset)
                     if ret<0 then
                         return -4
                     end
+                    offset = offset + ret
                     temp[k] = v 
                 end
                 table.insert(p[key],temp)
             end
         else
-            local ret,v = lproto_c.read(tp)
+            local itp = TINTEGER
+            if tp=="string" then itp = TSTRING end
+            local ret,v = lproto_c.read(itp,offset)
             if ret<0 then
                 return -5
             end
+            offset = offset + ret
             p[key] = v
         end
     end
-    return 0,protId,p
+    return 0,fd,protId,p
 end
 
 return lproto
