@@ -20,7 +20,7 @@ local dp2 = {
 }
 local ping_prot_Id = registProt(dp1)
 local pong_prot_Id = registProt(dp2)
-local prot = lproto.initProt(protDict)
+local prot = lproto.initprot(protDict)
 
 HANDSHAKE_CLIENT_MD5 = "3e76b7efa23dbbde535e269023478716"
 HANDSHAKE_SERVER_MD5 = "4f74a0ef499702957fa913c1d02f7016"

@@ -22,7 +22,7 @@ local dp2 = {
 }
 local ping_prot_Id = registProt(dp1)
 local pong_prot_Id = registProt(dp2)
-local prot = lproto.initProt(protDict)
+local prot = lproto.initprot(protDict)
 
 -- 序列化
 function serialize(obj,n)

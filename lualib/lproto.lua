@@ -11,7 +11,7 @@ local TINTEGER = 1
 local TSTRING  = 2
 
 --[[ buffer content
--- | - 2byte protId - | - prot - |
+-- | - 2byre size - | - 2byte fd - | - 2byte protId - | - prot - |
 --]]
 
 local function pairsbykey(t,f)
@@ -31,7 +31,8 @@ local function pairsbykey(t,f)
     return iter
 end
 
-function lproto.initProt(protDict)
+-- return : prot (metatable for pack and unpack)
+function lproto.initprot(protDict)
     for protId,p in pairs(protDict) do
         local _keysort = {}
         for k,v in pairsbykey(p) do
@@ -76,6 +77,9 @@ function prot:pack(fd,protId,p)
             sz = sz + ret
             for _,v in ipairs(p[key]) do
                 for _,k in ipairs(protDict[protId][key]._keysort) do
+                    if type(v[k]) ~= type(protDict[protId][key][k]) then
+                        v[k] = protDict[protId][key][k]
+                    end
                     ret = lproto_c.write(v[k],sz)
                     if ret>=BUFFER_MAX_LEN then
                         print(errstr)
@@ -85,6 +89,9 @@ function prot:pack(fd,protId,p)
                 end
             end
         else
+            if type(p[key]) ~= tp then
+                p[key] = protDict[protId][key]
+            end
             local ret = lproto_c.write(p[key],sz)
             if ret>=BUFFER_MAX_LEN then
                 print(errstr)
@@ -94,7 +101,6 @@ function prot:pack(fd,protId,p)
         end
     end
     local ret = lproto_c.write_2byte(sz-2,0)
-    print("buffer size=",sz)
     return lproto_c.newpack(sz)
 end
 
