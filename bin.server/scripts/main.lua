@@ -1,26 +1,6 @@
 local socket = require("socket")
-local lproto = require("lproto")
-
-local protDict = {}
-local function registProt(p)
-    table.insert(protDict,p)
-    return #protDict
-end
-
-local dp1 = {
-    ping = "hello",
-    ret = -1,
-}
-local dp2 = {
-    pong = "pong",
-    list = {
-        a = 1,
-        b = "hao",
-    },
-}
-local ping_prot_Id = registProt(dp1)
-local pong_prot_Id = registProt(dp2)
-local prot = lproto.initprot(protDict)
+prot = require("prot")
+require("logic")
 
 HANDSHAKE_CLIENT_MD5 = "3e76b7efa23dbbde535e269023478716"
 HANDSHAKE_SERVER_MD5 = "4f74a0ef499702957fa913c1d02f7016"
@@ -30,15 +10,6 @@ CONFIG_IP = "127.0.0.1"
 CONFIG_PORT = 8888
 
 local sock = socket.connect(CONFIG_IP,CONFIG_PORT)
-
-local function send_package(sock,pack)
-    local size = #pack
-    local package = string.char(bit32.extract(size,8,8)) ..
-        string.char(bit32.extract(size,0,8))..
-        pack
-
-    sock:send(package)
-end
 
 local function handshake(sock)
     local protId = 100
@@ -93,29 +64,22 @@ function serialize(obj,n)
     end
     return lua
 end
+print("prot :\n"..serialize(prot._dict))
 
 function msg_dispatch(sfd,buffer,sz)
     local sock = socket.getsock(sfd)
-    local ret,cfd,protId,pp = prot:unpack(buffer,sz)
+    local ret,cfd,protId,recvprot = prot:unpack(buffer,sz)
     print(string.format("[msg_dispatch] sfd=%d,cfd=%d,protId=%d,sz=%d,sock=%s",sfd,cfd,protId,sz,sock))
-    print("recive prot :\n"..serialize(pp))
-    if protId == 1 then
-        local protId = 2
-        local p = {
-            pong = "pong",
-            list = {
-                {
-                    a = 2,
-                    b = "testlist1",
-                },
-                {
-                    a = 3,
-                    b = "testlist2",
-                },
-            },
-        }
-        local sz,buf = prot:pack(cfd,protId,p)
-        sock:sendbuffer(buf,sz)
+    print("recive prot :\n"..serialize(recvprot))
+
+    local handlers = prot.getHandlers(protId)
+    if not handlers then
+        print("recive no regist handler prot. protId=",protId)
+        return 
+    end
+
+    for _,handler in ipairs(handlers) do
+        handler.handler(sock,cfd,recvprot)
     end
 end
 

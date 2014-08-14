@@ -18,6 +18,8 @@ all : \
 	$(BIN_GATEWAY_PATH)/gateway \
 	$(BIN_SERVER_PATH)/server \
 	$(foreach v, $(LUA_CLIB), $(LUA_CLIB_PATH)/$(v).so)
+	cp 3rd/lproto/lualib/lproto.lua lualib/
+	cp bin.server/scripts/prot.lua bin.client/
 
 $(LUA_STATICLIB) :
 	cd 3rd/lua && $(MAKE) CC=$(CC) linux
@@ -43,7 +45,6 @@ $(LUA_CLIB_PATH)/socket.so: lualib-src/lua-socket.c common-src/socket_mq.c commo
 
 $(LUA_CLIB_PATH)/lproto.so: 3rd/lproto/src/lproto.c 
 	$(CC) $(CFLAGS) $(SHARED) -o $@ $^ $(INCLS) -I$(LUA_INC)
-	cp 3rd/lproto/lualib/lproto.lua lualib/
 
 ### gateway
 GATEWAY_SRC = gate_mq.c gate_socket.c gate_main.c main.c
@@ -53,6 +54,7 @@ $(BIN_GATEWAY_PATH)/gateway : $(foreach v, $(GATEWAY_SRC), gateway-src/$(v)) 3rd
 ### server
 $(BIN_SERVER_PATH)/server : server-src/main.c common-src/socket_mq.c common-src/client_socket.c $(LUA_LIB)
 	$(CC) $(CFLAGS) -o $@ $^ $(INCLS) -I$(LUA_INC) -Wl,-E -lm -ldl -lrt
+
 
 clean:
 	rm -f $(BIN_GATEWAY_PATH)/gateway $(BIN_SERVER_PATH)/server $(LUA_CLIB_PATH)/*.so

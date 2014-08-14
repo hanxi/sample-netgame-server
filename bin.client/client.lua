@@ -1,28 +1,7 @@
 package.cpath = "luaclib/?.so;"
-package.path = "lualib/?.lua;"
+package.path = "lualib/?.lua;bin.client/?.lua;"
 
-local lproto = require("lproto")
-
-local protDict = {}
-local function registProt(p)
-    table.insert(protDict,p)
-    return #protDict
-end
-
-local dp1 = {
-    ping = "hello",
-    ret = -1,
-}
-local dp2 = {
-    pong = "pong",
-    list = {
-        a = 1,
-        b = "hao",
-    },
-}
-local ping_prot_Id = registProt(dp1)
-local pong_prot_Id = registProt(dp2)
-local prot = lproto.initprot(protDict)
+local prot = require("prot")
 
 -- 序列化
 function serialize(obj,n)
@@ -55,7 +34,6 @@ function serialize(obj,n)
     return lua
 end
 print("protDict:\n"..serialize(prot._dict))
-
 
 local socket = require "clientsocket"
 local bit32 = require "bit32"
